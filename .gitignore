@@ -6,6 +6,7 @@
 build/
 .build
 DerivedData/
+compile_commands.json
 
 ## Various settings
 *.pbxuser
