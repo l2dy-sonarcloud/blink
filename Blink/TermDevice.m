@@ -142,9 +142,6 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
 
 @end
 
-@interface TermDevice () <TermViewDeviceProtocol>
-@end
-
 
 // The TermStream is the PTYDevice
 // They might actually be different. The Device listens, the stream is lower level.
@@ -207,11 +204,40 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
 
 - (void)write:(NSString *)input
 {
-  if (!_rawMode) {
-    [self.view processKB:input];
+  NSString *ctrlC = @"\x03";
+  NSString *ctrlD = @"\x04";
+
+  if (_rawMode) {
+    [self writeInDirectly: input];
     return;
   }
-  [self writeInDirectly: input];
+  
+  // Cook
+  if ([input isEqualToString:ctrlC] || [input isEqualToString:ctrlD]) {
+    // [self closeReadline];
+
+    [self _EOT];
+    //if (_readlineSema) {
+    if ([input isEqualToString: ctrlC]) {
+      fprintf(_stream.err, "^C\n");
+    }
+    if ([input isEqualToString: ctrlD]) {
+      fprintf(_stream.err, "^D\n");
+    }
+      //}
+    // NOTE This should send specific signals instead of handling the control openly, but won't change for now.
+    [self.delegate handleControl: input];
+    return;
+  }
+  
+  // Ignore some C0 Control codes - https://wezfurlong.org/wezterm/escape-sequences.html#c0-control-codes
+  NSArray *ignoredSequences = [NSArray arrayWithObjects:@"\x1c", @"\x1d", @"\x1e", @"\x1f", nil];
+  if ([ignoredSequences containsObject:input]) {
+    return;
+  }
+  
+  // On Blink prompt, atm this is a special mode as it doesn't have a "readline" per-se.
+  [self.view processKB:input];
 }
 
 - (void)writeInDirectly:(NSString *)input
@@ -236,7 +262,7 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
 
 - (void)close
 {
-  // TODO: Closing the streams!! But they are duplicated!!!!
+  // Closing the Device streams. These are the main device, usually duped in Sessions.
   [_stream close];
   [_outStream close];
   [_errStream close];
@@ -261,12 +287,22 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
 {
   if (_stream.out) {
     if (rawMode) {
-      fprintf(_stream.out, "\x1b]1337;BlinkAutoCR=0\x07");
+      [self setAutoCR: FALSE];
     } else {
-      fprintf(_stream.out, "\x1b]1337;BlinkAutoCR=1\x07");
+      [self setAutoCR: TRUE];
     }
   }
   _rawMode = rawMode;
+}
+
+- (void)setAutoCR:(BOOL)autoCR {
+  if (autoCR) {
+    fprintf(_stream.out, "\x1b]1337;BlinkAutoCR=1\x07");
+  } else {
+    fprintf(_stream.out, "\x1b]1337;BlinkAutoCR=0\x07");
+  }
+  
+  _autoCR = autoCR;
 }
 
 - (void)prompt:(NSString *)prompt secure:(BOOL)secure shell:(BOOL)shell {
@@ -303,6 +339,19 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
     dispatch_semaphore_signal(_readlineSema);
     _readlineSema = nil;
   }
+}
+
+- (void)_EOT {
+  // On EOT, a PTY on the kernel would release linereads, etc... without closing the stream.
+  // We do not have that kind of access, so we "simulate" it by recycling stdin. Then we give an opportunity
+  // through the Terminal Delegate so sessions can "restore" stdin and continue reading from it if necessary.
+  // TODO We should return the last input we have from the device, but not easy to do atm.
+  [self closeReadline];
+  close(_pinput[1]);
+  close(_pinput[0]);
+  pipe(_pinput);
+  _stream.in = fdopen(_pinput[0], "rb");
+  setvbuf(_stream.in, NULL, _IONBF, 0);
 }
 
 - (void)setSecureTextEntry:(BOOL)secureTextEntry
@@ -435,11 +484,6 @@ static int __sizeOfIncompleteSequenceAtTheEnd(const char *buffer, size_t len) {
 
 - (void)viewSelectionChanged {
   [_input setHasSelection:_view.hasSelection];
-}
-
-- (BOOL)handleControl:(NSString *)control
-{
-  return NO;
 }
 
 - (void)viewShowAlert:(NSString *)title andMessage:(NSString *)message {

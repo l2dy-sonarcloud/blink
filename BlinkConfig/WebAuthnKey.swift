@@ -50,6 +50,7 @@ public class WebAuthnKey: NSObject {
   var log: SSHLogger? = nil
   //var authAnchor: ASPresentationAnchor? = nil
   var signaturePub: PassthroughSubject<Data, Error>!
+  var cancelSignature: AnyCancellable!
 
   public var comment: String? = nil
   
@@ -107,14 +108,18 @@ extension WebAuthnKey: Signer {
       var error: Error? = nil
       self.signaturePub = PassthroughSubject<Data, Error>()
       // Controller needs to be displayed on main.
-      let cancel = Just(authController)
+      self.cancelSignature = Just(authController)
         .receive(on: DispatchQueue.main)
         .flatMap { authController in
           authController.performRequests() // options: .preferImmediatelyAvailableCredentials may suppress the UI, and it doesn't make sense in our scenario
           self.log?.message("WebAuthn Controller called to perform request.", .debug)
           return self.signaturePub!
         }
+        .handleEvents(receiveCancel: {
+          self.log?.message("WebAuthn signature publisher cancelled", .debug)
+        })
         .sink(receiveCompletion: { completion in
+          self.log?.message("WebAuthn received signature publisher completed with \(completion)", .debug)
         switch completion {
         case .failure(let err):
           error = err
@@ -122,7 +127,10 @@ extension WebAuthnKey: Signer {
           break
         }
         semaphore.signal()
-      }, receiveValue: { signature = $0 })
+        }, receiveValue: { sig in
+          self.log?.message("WebAuthn signature received.", .debug)
+          signature = sig
+        })
 
       self.log?.message("WebAuthn Controller awaiting response.", .debug)
       semaphore.wait()
@@ -151,7 +159,9 @@ extension WebAuthnKey: ASAuthorizationControllerDelegate, ASAuthorizationControl
       let credentialAssertion = authorization.credential as? ASAuthorizationPublicKeyCredentialAssertion,
       let rawSignature = credentialAssertion.signature
     else {
-      return signaturePub.send(completion: .failure(WebAuthnError.signatureError("Unexpected operation")))
+      self.log?.message("WebAuthn Controller unexpected operation received.", .warn)
+      signaturePub.send(completion: .failure(WebAuthnError.signatureError("Unexpected operation")))
+      return
     }
 
     let rawClientData = credentialAssertion.rawClientDataJSON
@@ -164,6 +174,7 @@ extension WebAuthnKey: ASAuthorizationControllerDelegate, ASAuthorizationControl
     
     // TODO We should validate the CredentialID, to be sure we signed with the proper key,
     // before we fail or ask the user to retry.
+    self.log?.message("WebAuthn Controller sending signature", .debug)
     signaturePub.send(webAuthnSig)
     signaturePub.send(completion: .finished)
   }

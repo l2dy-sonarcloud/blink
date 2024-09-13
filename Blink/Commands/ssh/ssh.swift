@@ -186,6 +186,11 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
         print(banner, to: &self.stdout)
       }
       
+      conn.handleSessionException = { error in
+        print("Exception received \(error)", to: &self.stderr)
+        self.kill()
+      }
+      
       if cmd.startsSession {
         if let addr = conn.clientAddressIP() {
           print("Connected to \(addr)", to: &self.stdout)
@@ -238,7 +243,14 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
     awaitRunLoop()
 
     stream?.cancel()
-
+    outStream?.close()
+    inStream?.close()
+    errStream?.close()
+    stream = nil
+    outStream = nil
+    inStream = nil
+    errStream = nil
+    
     if let conn = self.connection, cmd.blocks {
       if cmd.startsSession { SSHPool.deregister(shellOn: conn) }
       forwardTunnels.forEach { SSHPool.deregister(localForward:  $0, on: conn) }

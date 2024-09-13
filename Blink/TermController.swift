@@ -437,12 +437,11 @@ extension TermController: TermDeviceDelegate {
     _termDevice.input?.reset()
   }
   
-  public func handleControl(_ control: String!) -> Bool {
-    return _session?.handleControl(control) ?? false
+  public func handleControl(_ control: String!) -> Void {
+    _session?.handleControl(control)
   }
   
   public func deviceFocused() {
-    _session?.setActiveSession()
     view.setNeedsLayout()
   }
   

@@ -105,6 +105,8 @@ enum KBDevice {
     // |  7 | iPhone 14 Pro        |  852 |  693 |      |     |
     // |  8 | iPhone 14 Pro Max    |  932 |  812 |      |     |
     // |  9 | iPhone SE 3d-gen     |  667 |  568 |      |     |
+    // |    | iPhone 16 Pro        |  874 |  693 |      |     |
+    // |    | iPhone 16 Pro Max    |  956 |  812 |      |     |
     // | 10 | iPad 7th-gen         | 1080 |      |      |     |
     // | 11 | iPad 8th-gen         | 1080 |      |      |     |
     // | 12 | iPad 9th-gen         | 1180 |      |      |     |
@@ -116,6 +118,12 @@ enum KBDevice {
     // | 18 | iPad Pro 11" 3d-gen  | 1194 |      | 1389 | tab |
     // | 18 | iPad Pro 11" 4d-gen  | 1194 |      | 1389 | tab |
     // | 19 | iPad Pro 12" 6th-gen | 1366 | 1024 | 1590 | tab |
+    // | 20 | iPad Air 11" M2      | 1180 |      | 1373 | tab |
+    // | 21 | iPad Air 13" M2      | 1366 | 1024 | 1590 | tab |
+    // | 22 | iPad Pro 11" M4 17.4 | 1194 |      | 1408 | tab |
+    // | 22 | iPad Pro 11" M4 17.5 | 1210 |      | 1408 | tab |
+    // | 23 | iPad Pro 13" M4      | 1376 | 1032 | 1600 | tab |
+    // | 23'| iPad Pro 13" M4 17.4 | 1366 | 1024 | 1590 | tab |
     // +----+----------------------+------+------+------+-----+
   
     switch wideSideSize {
@@ -126,10 +134,12 @@ enum KBDevice {
     case 812:  return .in5_8 // iPhone 11 Pro, iPhone 12 Pro Max ZLT
     case 844:  return .in6_1 // iPhone 12 Pro, iPhone 14
     case 852:  return .in6_1 // iPhone 14 Pro
+    case 874:  return .in6_1 // iPhone 16
     case 896:  return .in6_5 // iPhone 11 Pro Max
     case 926:  return .in6_7 // iPhone 12 Pro Max, iPhone 14 Plus
     case 932:  return .in6_7 // iPhone 14 Pro Max
-    case 1024:
+    case 956:  return .in6_7
+    case 1024, 1032:
       // tune for ipad 12 ZLT
       return DeviceInfo.shared().hasCorners ? .in12_9 : .in9_7 // iPad 12.9 ZLT
     case 1080: return .in10_2 // TODO: Tune for iPad 10th-gen
@@ -144,7 +154,10 @@ enum KBDevice {
     case 1389: return .in11_MoreSpace
     case 1366: return .in12_9
     case 1590: return .in12_9 // iPad 12.9 ZMS
-
+    case 1210: return .in11
+    case 1408: return .in11_MoreSpace
+    case 1376: return .in12_9
+    case 1600: return .in12_9
     default:
       // Safe fallback
       print("KBDevice: unknown device with size:", size)

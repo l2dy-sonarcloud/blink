@@ -115,6 +115,7 @@ struct Complete {
     }
     let result = [
       "awk": "Select particular records in a file and perform operations upon them.",
+      "bc": "Calculator 🧮.",
       "cat": "Concatenate and print files.",
       "cd":  "Change directory.",
 //  //    "chflags": "chflags", // TODO
@@ -128,7 +129,6 @@ struct Complete {
       "diff": "Compare files line by line.",
       "dig": "DNS lookup utility.",
       "du": "Disk usage",
-      "ed": "Line-oriented text editor",
       "echo": "Write arguments to the standard output.",
       "egrep": "Search for a pattern using extended regex.", // https://www.computerhope.com/unix/uegrep.htm
       "env": "Set environment and execute command, or print environment.", // fish
@@ -142,6 +142,7 @@ struct Complete {
       "help": "Prints all commands. 🧐 ",
       "history": "Use -c option to clear history. 🙈 ",
       "host": "DNS lookup utility.", // fish
+      "less": "Pager.",
       "link": "Make links.", // fish
 //      "ln": "", // TODO
       "ls": "List files and directories",
@@ -184,10 +185,10 @@ struct Complete {
       "unlink": "Remove directory entries.", // fish
 //  //    @"unsetenv": @"", // TODO
       "uptime": "Show how long system has been running.", // fish
+      "vim": "Vi IMproved, a programmer's text editor",
       "wc": "Words and lines counter.",
       "whoami": "Display effective user id.", // fish
       "whois": "Internet domain name and network number directory service.", // fish
-
       "open": "open url of file (Experimental). 📤",
       "link-files": "link folders from Files.app (Experimental).",
       "build": "Access to Blink dev machines. ⚒ ",
@@ -201,10 +202,10 @@ struct Complete {
   private static func _completionKind(_ cmd: String) -> Kind {
     switch cmd {
     case "": return .command
-    case "ssh", "ssh2", "mosh": return .blinkHost
+    case "ssh", "ssh2", "mosh", "mosh1": return .blinkHost
     case "ping": return .host
     case "ls": return .directory
-    case "file": return .file
+    case "file", "vim", "less": return .file
     case "geo": return .blinkGeo
     case "build": return .blinkBuild
     case "facecam": return .facecam
